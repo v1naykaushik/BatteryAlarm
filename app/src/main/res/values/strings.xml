@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Battery Alarm</string>
+    <string name="battery_alert_icon_desc">Battery alert</string>
+    <string name="dismiss">DISMISS</string>
+</resources>
