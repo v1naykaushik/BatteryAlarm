@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.app.NotificationCompat
 
 class NotificationHelper(private val context: Context) {
@@ -49,6 +50,7 @@ class NotificationHelper(private val context: Context) {
 
         nm.createNotificationChannel(serviceChannel)
         nm.createNotificationChannel(alarmChannel)
+        Log.d("BatteryAlarm", "NotificationHelper: channels created")
     }
 
     // ── Foreground service notification ──────────────────────────────────────
@@ -62,6 +64,7 @@ class NotificationHelper(private val context: Context) {
         batteryPct: Int,
         label: String? = null
     ): Notification {
+        Log.d("BatteryAlarm", "NotificationHelper: buildServiceNotification called — pct=$batteryPct label=$label")
         val contentText = label ?: "Charging — $batteryPct%"
 
         // Tapping the notification opens MainActivity
@@ -95,6 +98,7 @@ class NotificationHelper(private val context: Context) {
      * via a full-screen intent so it fires even on the lock screen.
      */
     fun buildAlarmNotification(alarmMessage: String): Notification {
+        Log.d("BatteryAlarm", "NotificationHelper: buildAlarmNotification called — message=$alarmMessage")
         val fullScreenIntent = Intent(context, AlarmActivity::class.java).apply {
             putExtra("alarm_message", alarmMessage)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

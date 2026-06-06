@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.core.view.WindowCompat
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -84,6 +85,7 @@ class MainActivity : AppCompatActivity() {
             if (isCharging) {
                 startForegroundService(Intent(this, ChargingService::class.java))
             }
+            Log.d("BatteryAlarm", "MainActivity: onResume — masterEnabled=${prefs.masterEnabled} isCharging=$isCharging")
         }
     }
 

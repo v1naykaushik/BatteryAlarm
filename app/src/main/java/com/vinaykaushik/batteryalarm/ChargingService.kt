@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.util.Log
 import java.time.YearMonth
 
 class ChargingService : Service() {
@@ -52,7 +53,7 @@ class ChargingService : Service() {
 
             // Update foreground notification
             updateServiceNotification()
-
+            Log.d("BatteryAlarm", "ChargingService: battery update — pct=$currentBatteryPct isCharging=$isCharging")
             if (!isCharging) {
                 stopSelf()
                 return
@@ -71,6 +72,7 @@ class ChargingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("BatteryAlarm", "ChargingService: onStartCommand called — masterEnabled = ${prefs.masterEnabled}")
         // Guard: if master toggle is off, shut down immediately
         if (!prefs.masterEnabled) {
             stopSelf()
@@ -82,9 +84,11 @@ class ChargingService : Service() {
             NotificationHelper.NOTIF_ID_SERVICE,
             notifHelper.buildServiceNotification(currentBatteryPct)
         )
+        Log.d("BatteryAlarm", "ChargingService: startForeground called successfully")
         // Now safe to do everything else
         acquireWakeLock()
         registerBatteryReceiver()
+        Log.d("BatteryAlarm", "ChargingService: battery receiver registered")
         // Reset per-session state
         alarmFiredThisSession = false
         monthlySoakScheduled  = false
@@ -98,6 +102,7 @@ class ChargingService : Service() {
     }
 
     override fun onDestroy() {
+        Log.d("BatteryAlarm", "ChargingService: onDestroy called — service is stopping")
         super.onDestroy()
         handler.removeCallbacks(soakRunnable)
         try { unregisterReceiver(batteryReceiver) } catch (e: Exception) { }
@@ -126,6 +131,7 @@ class ChargingService : Service() {
     }
 
     private fun handleNormalThreshold(pct: Int) {
+        Log.d("BatteryAlarm", "ChargingService: threshold reached — pct=$pct threshold=${prefs.threshold}")
         if (alarmFiredThisSession) return
 
         val threshold = prefs.threshold   // always read live

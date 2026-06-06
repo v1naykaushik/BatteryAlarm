@@ -42,10 +42,21 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- ── ChargingTileService ──────────────────────────────────────────── -->
+        <service
+            android:name=".ChargingTileService"
+            android:exported="true"
+            android:label="Battery Alarm"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- ── ChargingReceiver ──────────────────────────────────────────── -->
         <receiver
             android:name=".ChargingReceiver"
-            android:exported="false"
+            android:exported="true"
             tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.POWER_CONNECTED" />
