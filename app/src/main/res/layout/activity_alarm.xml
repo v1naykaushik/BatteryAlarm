@@ -15,7 +15,6 @@
         android:layout_height="96dp"
         android:src="@drawable/ic_battery_alert"
         android:contentDescription="@string/battery_alert_icon_desc"
-        app:tint="?attr/colorError"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/tvAlarmMessage"
         app:layout_constraintStart_toStartOf="parent"

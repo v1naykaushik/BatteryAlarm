@@ -125,6 +125,7 @@ class ChargingService : Service() {
                 handler.removeCallbacks(soakRunnable)
                 monthlySoakScheduled  = false
                 isMonthlyChargeSession = false
+                updateServiceNotification()
             }
             handleNormalThreshold(pct)
         }

@@ -9,6 +9,9 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
 import android.view.WindowManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import androidx.appcompat.app.AppCompatActivity
 import com.vinaykaushik.batteryalarm.databinding.ActivityAlarmBinding
 
@@ -46,8 +49,21 @@ class AlarmActivity : AppCompatActivity() {
 
         startRingtone()
 
+        registerReceiver(
+            unplugReceiver,
+            IntentFilter(Intent.ACTION_POWER_DISCONNECTED)
+        )
+
         binding.btnDismiss.setOnClickListener {
             dismiss()
+        }
+    }
+
+    private val unplugReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_POWER_DISCONNECTED) {
+                dismiss()
+            }
         }
     }
 
@@ -62,6 +78,7 @@ class AlarmActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         releaseResources()
+        try { unregisterReceiver(unplugReceiver) } catch (e: Exception) { }
     }
 
     // ── Alarm sound ──────────────────────────────────────────────────────────
