@@ -27,6 +27,7 @@ class ChargingService : Service() {
     private var isMonthlyChargeSession = false
     private var monthlySoakScheduled = false
     private var currentBatteryPct = 0
+    private var currentTempC = -1
 
     private val soakRunnable = Runnable {
         // 30-minute soak complete
@@ -48,6 +49,8 @@ class ChargingService : Service() {
             if (level < 0) return
 
             currentBatteryPct = (level * 100 / scale)
+            val tempRaw = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1)
+            val tempCelsius = if (tempRaw >= 0) tempRaw / 10 else -1
             val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
                     status == BatteryManager.BATTERY_STATUS_FULL
 
@@ -59,7 +62,7 @@ class ChargingService : Service() {
                 return
             }
 
-            handleBatteryLevel(currentBatteryPct)
+            handleBatteryLevel(currentBatteryPct, tempCelsius)
         }
     }
 
@@ -113,21 +116,40 @@ class ChargingService : Service() {
 
     // ── Core logic ───────────────────────────────────────────────────────────
 
-    private fun handleBatteryLevel(pct: Int) {
-        // Re-read monthly toggle live in case it changed
+    private fun handleBatteryLevel(pct: Int, tempC: Int) {
+        currentTempC = tempC
         val monthlyEnabled = prefs.monthlyChargeEnabled
 
-        if (isMonthlyChargeSession && monthlyEnabled) {
-            handleMonthlySession(pct)
-        } else {
-            // If monthly was on but just got toggled off mid-soak, cancel soak
+        if (prefs.isTempMode) {
+            // In temp mode: skip battery/monthly logic entirely
             if (monthlySoakScheduled) {
                 handler.removeCallbacks(soakRunnable)
                 monthlySoakScheduled  = false
                 isMonthlyChargeSession = false
-                updateServiceNotification()
             }
-            handleNormalThreshold(pct)
+            handleTempThreshold(tempC)
+        } else {
+            if (isMonthlyChargeSession && monthlyEnabled) {
+                handleMonthlySession(pct)
+            } else {
+                if (monthlySoakScheduled) {
+                    handler.removeCallbacks(soakRunnable)
+                    monthlySoakScheduled  = false
+                    isMonthlyChargeSession = false
+                    updateServiceNotification()
+                }
+                handleNormalThreshold(pct)
+            }
+        }
+    }
+
+    private fun handleTempThreshold(tempC: Int) {
+        if (alarmFiredThisSession) return
+        if (tempC < 0) return  // temp unavailable
+
+        if (tempC >= prefs.tempThreshold) {
+            alarmFiredThisSession = true
+            launchAlarm("Battery temperature reached ${tempC}°C!")
         }
     }
 
@@ -161,15 +183,19 @@ class ChargingService : Service() {
     private fun updateServiceNotification(soakMinutesRemaining: Int? = null) {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE)
                 as android.app.NotificationManager
-
+        
         val label = when {
+            prefs.isTempMode -> {
+                val tempStr = if (currentTempC >= 0) "${currentTempC}°C" else "--°C"
+                "Charging — $tempStr"
+            }
             monthlySoakScheduled -> {
                 val elapsedMs = System.currentTimeMillis() - soakStartTimeMs
                 val remainingMins = 30 - (elapsedMs / 60000).toInt()
                 "Monthly charge — soaking: $remainingMins min remaining"
             }
             isMonthlyChargeSession -> "Monthly full charge in progress — $currentBatteryPct%"
-            else -> null   // buildServiceNotification will use default "Charging — XX%"
+            else -> null
         }
 
         nm.notify(

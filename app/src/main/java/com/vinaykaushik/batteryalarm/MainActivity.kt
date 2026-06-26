@@ -20,6 +20,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.vinaykaushik.batteryalarm.databinding.ActivityMainBinding
+import android.graphics.Color
+import android.view.View
+import com.google.android.material.button.MaterialButtonToggleGroup
 
 class MainActivity : AppCompatActivity() {
 
@@ -133,6 +136,16 @@ class MainActivity : AppCompatActivity() {
         )
         binding.tvMonthlyStatus.text = if (monthlyDone)
             "Monthly charge done ✓" else "Monthly charge pending"
+
+        val tempRaw = batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
+        val tempCelsius = if (tempRaw >= 0) tempRaw / 10 else -1
+
+        if (prefs.isTempMode && tempCelsius >= 0) {
+            binding.tvCurrentTemp.visibility = View.VISIBLE
+            binding.tvCurrentTemp.text = "Current: ${tempCelsius}°C"
+        } else {
+            binding.tvCurrentTemp.visibility = View.GONE
+        }
     }
 
     // ── Controls setup ───────────────────────────────────────────────────────
@@ -203,12 +216,62 @@ class MainActivity : AppCompatActivity() {
         binding.switchMonthly.setOnCheckedChangeListener { _, isChecked ->
             prefs.monthlyChargeEnabled = isChecked
         }
+
+        // ── Alarm mode toggle ────────────────────────────────────────────────
+        val isTempMode = prefs.isTempMode
+        binding.toggleAlarmMode.check(
+            if (isTempMode) R.id.btnModeTemp else R.id.btnModeBattery
+        )
+        binding.cardTempSlider.visibility = if (isTempMode) View.VISIBLE else View.GONE
+
+        binding.toggleAlarmMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val tempSelected = checkedId == R.id.btnModeTemp
+
+            if (tempSelected) {
+                val temp = readBatteryTempCelsius()
+                if (temp == null) {
+                    // Device doesn't provide temp — revert to battery mode
+                    Toast.makeText(
+                        this,
+                        "Your device doesn't provide battery temperature information",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    binding.toggleAlarmMode.check(R.id.btnModeBattery)
+                    // above check() triggers this listener again with btnModeBattery, so return here
+                    return@addOnButtonCheckedListener
+                }
+            }
+
+            prefs.isTempMode = tempSelected
+            binding.cardTempSlider.visibility = if (tempSelected) View.VISIBLE else View.GONE
+            refreshStatusCard()
+        }
+
+        // ── Temperature slider ───────────────────────────────────────────────
+        binding.sliderTemp.apply {
+            value = prefs.tempThreshold.toFloat()
+            // Make track transparent so gradient view behind shows through
+            trackActiveTintList = android.content.res.ColorStateList.valueOf(Color.TRANSPARENT)
+            trackInactiveTintList = android.content.res.ColorStateList.valueOf(Color.TRANSPARENT)
+        }
+        updateTempLabel(prefs.tempThreshold)
+        binding.sliderTemp.addOnChangeListener { _, value, _ ->
+            val temp = value.toInt()
+            prefs.tempThreshold = temp
+            updateTempLabel(temp)
+        }
+        refreshStatusCard()
     }
 
     // ── Label helpers ────────────────────────────────────────────────────────
 
     private fun updateThresholdLabel(pct: Int) {
         binding.tvThresholdLabel.text = "Alert at: $pct%"
+    }
+
+    private fun updateTempLabel(temp: Int) {
+        binding.tvTempThresholdLabel.text = "Alert at: ${temp}°C"
     }
 
     private fun updateRingtoneLabel(uri: Uri?) {
@@ -222,5 +285,12 @@ class MainActivity : AppCompatActivity() {
         } else {
             "Default alarm tone"
         }
+    }
+
+    private fun readBatteryTempCelsius(): Int? {
+        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val tempRaw = batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
+        // Some devices return 0 instead of -1 when temp is unavailable
+        return if (tempRaw > 0) tempRaw / 10 else null
     }
 }

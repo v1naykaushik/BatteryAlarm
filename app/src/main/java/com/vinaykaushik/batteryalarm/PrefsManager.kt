@@ -33,6 +33,16 @@ class PrefsManager private constructor(context: Context) {
         get() = prefs.getString(KEY_LAST_FULL_CHARGE_MONTH, "") ?: ""
         set(value) = prefs.edit().putString(KEY_LAST_FULL_CHARGE_MONTH, value).apply()
 
+    // ── Alarm mode: false = battery, true = temperature ──────────────────────
+    var isTempMode: Boolean
+        get() = prefs.getBoolean(KEY_IS_TEMP_MODE, false)
+        set(value) = prefs.edit().putBoolean(KEY_IS_TEMP_MODE, value).apply()
+
+    // ── Temperature threshold (25–55°C, default 40) ──────────────────────────
+    var tempThreshold: Int
+        get() = prefs.getInt(KEY_TEMP_THRESHOLD, 40)
+        set(value) = prefs.edit().putInt(KEY_TEMP_THRESHOLD, value).apply()
+
     // ── Singleton plumbing ───────────────────────────────────────────────────
     companion object {
         private const val PREFS_NAME = "battery_alarm_prefs"
@@ -42,6 +52,8 @@ class PrefsManager private constructor(context: Context) {
         private const val KEY_RINGTONE_URI           = "ringtone_uri"
         private const val KEY_MONTHLY_CHARGE_ENABLED = "monthly_charge_enabled"
         private const val KEY_LAST_FULL_CHARGE_MONTH = "last_full_charge_month"
+        private const val KEY_IS_TEMP_MODE    = "is_temp_mode"
+        private const val KEY_TEMP_THRESHOLD  = "temp_threshold"
 
         @Volatile
         private var INSTANCE: PrefsManager? = null
