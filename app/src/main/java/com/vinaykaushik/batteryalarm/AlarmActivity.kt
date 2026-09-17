@@ -152,8 +152,11 @@ class AlarmActivity : AppCompatActivity() {
 
     private fun dismiss() {
         releaseResources()
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.cancel(NotificationHelper.NOTIF_ID_ALARM)
         finish()
     }
+
 
     private fun releaseResources() {
         mediaPlayer?.let {

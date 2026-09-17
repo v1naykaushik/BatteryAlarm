@@ -20,6 +20,8 @@ class ChargingReceiver : BroadcastReceiver() {
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
                 Log.d("BatteryAlarm", "ChargingReceiver: POWER_DISCONNECTED — stopping service")
+                val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                nm.cancel(NotificationHelper.NOTIF_ID_ALARM)
                 context.stopService(
                     Intent(context, ChargingService::class.java)
                 )

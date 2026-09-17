@@ -1,18 +1,17 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
     namespace = "com.vinaykaushik.batteryalarm"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.vinaykaushik.batteryalarm"
         minSdk = 31
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -29,14 +28,17 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = "11"
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         viewBinding = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -45,7 +47,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("com.google.android.material:material:1.14.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.2")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

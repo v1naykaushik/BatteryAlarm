@@ -32,7 +32,21 @@ class ChargingService : Service() {
     private val soakRunnable = Runnable {
         // 30-minute soak complete
         prefs.lastFullChargeMonth = currentMonthString()
+        monthlySoakScheduled = false
+        isMonthlyChargeSession = false
+        handler.removeCallbacks(soakTickRunnable)
         launchAlarm("Monthly soak complete. Please unplug and restart your phone.")
+    }
+
+    // Ticks every 30s independent of battery broadcasts, so the countdown stays
+    // accurate even when ACTION_BATTERY_CHANGED fires rarely (trickle charging at 100%).
+    private val soakTickRunnable = object : Runnable {
+        override fun run() {
+            if (monthlySoakScheduled) {
+                updateServiceNotification()
+                handler.postDelayed(this, 30_000L)
+            }
+        }
     }
 
     // ── Battery receiver ─────────────────────────────────────────────────────
@@ -58,6 +72,8 @@ class ChargingService : Service() {
             updateServiceNotification()
             Log.d("BatteryAlarm", "ChargingService: battery update — pct=$currentBatteryPct isCharging=$isCharging")
             if (!isCharging) {
+                val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                nm.cancel(NotificationHelper.NOTIF_ID_ALARM)
                 stopSelf()
                 return
             }
@@ -92,10 +108,12 @@ class ChargingService : Service() {
         acquireWakeLock()
         registerBatteryReceiver()
         Log.d("BatteryAlarm", "ChargingService: battery receiver registered")
+
         // Reset per-session state
         alarmFiredThisSession = false
         monthlySoakScheduled  = false
         handler.removeCallbacks(soakRunnable)
+        handler.removeCallbacks(soakTickRunnable)
 
         // Determine if this is the monthly full-charge session
         isMonthlyChargeSession = prefs.monthlyChargeEnabled &&
@@ -108,6 +126,7 @@ class ChargingService : Service() {
         Log.d("BatteryAlarm", "ChargingService: onDestroy called — service is stopping")
         super.onDestroy()
         handler.removeCallbacks(soakRunnable)
+        handler.removeCallbacks(soakTickRunnable)
         try { unregisterReceiver(batteryReceiver) } catch (e: Exception) { }
         if (::wakeLock.isInitialized && wakeLock.isHeld) wakeLock.release()
     }
@@ -124,6 +143,7 @@ class ChargingService : Service() {
             // In temp mode: skip battery/monthly logic entirely
             if (monthlySoakScheduled) {
                 handler.removeCallbacks(soakRunnable)
+                handler.removeCallbacks(soakTickRunnable)
                 monthlySoakScheduled  = false
                 isMonthlyChargeSession = false
             }
@@ -134,6 +154,7 @@ class ChargingService : Service() {
             } else {
                 if (monthlySoakScheduled) {
                     handler.removeCallbacks(soakRunnable)
+                    handler.removeCallbacks(soakTickRunnable)
                     monthlySoakScheduled  = false
                     isMonthlyChargeSession = false
                     updateServiceNotification()
@@ -161,6 +182,7 @@ class ChargingService : Service() {
         if (pct >= threshold) {
             alarmFiredThisSession = true
             launchAlarm("Battery sufficiently charged.")
+            updateServiceNotification()
         }
     }
 
@@ -170,6 +192,7 @@ class ChargingService : Service() {
             soakStartTimeMs = System.currentTimeMillis()
             updateServiceNotification(soakMinutesRemaining = 30)
             handler.postDelayed(soakRunnable, 30 * 60 * 1000L)
+            handler.postDelayed(soakTickRunnable, 30_000L)
         }
 
         // Update soak countdown label in notification (approximate minutes)
@@ -195,6 +218,7 @@ class ChargingService : Service() {
                 "Monthly charge — soaking: $remainingMins min remaining"
             }
             isMonthlyChargeSession -> "Monthly full charge in progress — $currentBatteryPct%"
+            alarmFiredThisSession -> "Battery sufficiently charged. Unplug charger."
             else -> null
         }
 

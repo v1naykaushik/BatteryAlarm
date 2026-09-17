@@ -23,6 +23,7 @@ import com.vinaykaushik.batteryalarm.databinding.ActivityMainBinding
 import android.graphics.Color
 import android.view.View
 import com.google.android.material.button.MaterialButtonToggleGroup
+import androidx.activity.OnBackPressedCallback
 
 class MainActivity : AppCompatActivity() {
 
@@ -64,6 +65,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
         setSupportActionBar(binding.toolbar)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                finishAffinity()
+            }
+        })
 
         if (Build.VERSION.SDK_INT >= 34) {
             val nm = getSystemService(NotificationManager::class.java)
